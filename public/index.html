@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydroponic Monitoring System | IoT Dashboard</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Real-time hydroponic monitoring system dashboard for Adamas University. Track pH, temperature, moisture, EC, and TDS levels with ESP32 IoT sensors.">
+    <meta name="keywords" content="hydroponic, IoT, dashboard, ESP32, monitoring, agriculture, sensors, real-time, Adamas University">
+    <meta name="author" content="Adamas University">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="Hydroponic Monitoring System | IoT Dashboard">
+    <meta property="og:description" content="Real-time IoT dashboard for hydroponic farming with ESP32 sensor integration">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="./logo.png">
+    <meta property="og:site_name" content="Adamas University Hydroponic Project">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Hydroponic Monitoring System">
+    <meta name="twitter:description" content="Real-time IoT dashboard for hydroponic farming">
+    <meta name="twitter:image" content="./logo.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563eb'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='white' font-family='Arial,sans-serif' font-weight='bold'>H</text></svg>">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preload" as="style" href="styles.css">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Preload Script -->
+    <link rel="preload" as="script" href="script.js">
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">
+            <span>Connecting to ESP32</span>
+            <span class="loading-dots"></span>
+        </p>
+    </div>
+
+    <!-- Header Section -->
+    <header class="main-header">
+        <div class="container">
+            <div class="brand-wrapper">
+                <div class="logo-box">
+                    <img src="logo.png" alt="Adamas University" class="header-logo">
+                </div>
+                <div class="brand-text">
+                    <h1 class="header-title">Hydroponic Monitoring System</h1>
+                    <p class="header-subtitle">Adamas University | IoT Dashboard</p>
+                </div>
+            </div>
+            
+            <div class="status-info">
+                <span class="status-item">
+                    <span class="led-indicator active" title="System Status"></span>
+                    <span>System Online</span>
+                </span>
+                <span class="status-item">
+                     <svg class="status-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span id="lastUpdate">--:--:--</span>
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Range Settings Modal -->
+    <div class="modal-overlay" id="rangeModal">
+        <div class="range-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Configure Sensor Ranges</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-content">
+                <!-- Moisture Settings -->
+                <div class="range-group">
+                    <label class="range-label">Soil Moisture (Zone A & B)</label>
+                    <div class="range-inputs">
+                        <div class="input-wrapper">
+                            <label class="input-label">Min (%)</label>
+                            <input type="number" class="range-input" id="moistureMin" value="40">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="input-label">Max (%)</label>
+                            <input type="number" class="range-input" id="moistureMax" value="70">
+                        </div>
+                    </div>
+                </div>
+                <!-- pH Settings -->
+                <div class="range-group">
+                    <label class="range-label">pH Level</label>
+                    <div class="range-inputs">
+                        <div class="input-wrapper">
+                            <label class="input-label">Min (pH)</label>
+                            <input type="number" class="range-input" id="phMin" value="5.5" step="0.1">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="input-label">Max (pH)</label>
+                            <input type="number" class="range-input" id="phMax" value="6.5" step="0.1">
+                        </div>
+                    </div>
+                </div>
+                <!-- Temperature Settings -->
+                <div class="range-group">
+                    <label class="range-label">Temperature</label>
+                    <div class="range-inputs">
+                        <div class="input-wrapper">
+                            <label class="input-label">Min (°C)</label>
+                            <input type="number" class="range-input" id="tempMin" value="20">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="input-label">Max (°C)</label>
+                            <input type="number" class="range-input" id="tempMax" value="28">
+                        </div>
+                    </div>
+                </div>
+                <!-- EC Settings -->
+                <div class="range-group">
+                    <label class="range-label">Electrical Conductivity (EC)</label>
+                    <div class="range-inputs">
+                        <div class="input-wrapper">
+                            <label class="input-label">Min (μS/cm)</label>
+                            <input type="number" class="range-input" id="ecMin" value="1200">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="input-label">Max (μS/cm)</label>
+                            <input type="number" class="range-input" id="ecMax" value="1800">
+                        </div>
+                    </div>
+                </div>
+                <!-- TDS Settings -->
+                 <div class="range-group">
+                    <label class="range-label">Total Dissolved Solids (TDS)</label>
+                    <div class="range-inputs">
+                        <div class="input-wrapper">
+                            <label class="input-label">Min (ppm)</label>
+                            <input type="number" class="range-input" id="tdsMin" value="700">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="input-label">Max (ppm)</label>
+                            <input type="number" class="range-input" id="tdsMax" value="1000">
+                        </div>
+                    </div>
+                </div>
+                <!-- Flow Rate Settings -->
+                 <div class="range-group">
+                    <label class="range-label">Flow Rate</label>
+                    <div class="range-inputs">
+                        <div class="input-wrapper">
+                            <label class="input-label">Min (L/min)</label>
+                            <input type="number" class="range-input" id="rateMin" value="1.5" step="0.1">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="input-label">Max (L/min)</label>
+                            <input type="number" class="range-input" id="rateMax" value="3.0" step="0.1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="control-button secondary cancel-modal">Cancel</button>
+                <button class="control-button primary save-modal">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            
+            <!-- Summary Cards -->
+            <div class="summary-section">
+                <div class="summary-card">
+                    <div class="summary-icon moisture-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                        </svg>
+                    </div>
+                    <div class="summary-info">
+                        <p class="summary-label">Avg. Moisture</p>
+                        <p class="summary-value" id="avgMoisture">--</p>
+                        <p class="summary-unit">%</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon temp-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+                        </svg>
+                    </div>
+                    <div class="summary-info">
+                        <p class="summary-label">Avg. Temperature</p>
+                        <p class="summary-value" id="avgTemp">--</p>
+                        <p class="summary-unit">°C</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon ph-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9.5 12a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z"/>
+                            <path d="M17 7h4v10"/>
+                            <path d="M17 12h3"/>
+                            <path d="M3 6.5v11"/>
+                            <path d="M3 12h3.5"/>
+                        </svg>
+                    </div>
+                    <div class="summary-info">
+                        <p class="summary-label">Avg. pH Level</p>
+                        <p class="summary-value" id="avgPH">--</p>
+                        <p class="summary-unit">pH</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon ec-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                    </div>
+                    <div class="summary-info">
+                        <p class="summary-label">Avg. EC</p>
+                        <p class="summary-value" id="avgEC">--</p>
+                        <p class="summary-unit">μS/cm</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Dashboard Grid -->
+            <div class="dashboard-grid">
+                
+                <!-- Moisture Monitoring -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-header-content">
+                            <span class="card-icon moisture-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                                </svg>
+                            </span>
+                            <h3 class="card-title">Soil Moisture</h3>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="sensor-reading">
+                            <div class="sensor-info">
+                                <span class="led-indicator" data-led="moisture-a"></span>
+                                <span class="sensor-label">Zone A</span>
+                                <span class="sensor-status" data-status="normal">Normal</span>
+                            </div>
+                            <div class="sensor-value-container" title="Optimal range: 40-70%">
+                                <span class="sensor-value" data-sensor="moisture-a">--</span>
+                                <span class="sensor-unit">%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" data-progress="moisture-a"></div>
+                            </div>
+                        </div>
+                        <div class="sensor-reading">
+                            <div class="sensor-info">
+                                <span class="led-indicator" data-led="moisture-b"></span>
+                                <span class="sensor-label">Zone B</span>
+                                <span class="sensor-status" data-status="normal">Normal</span>
+                            </div>
+                            <div class="sensor-value-container" title="Optimal range: 40-70%">
+                                <span class="sensor-value" data-sensor="moisture-b">--</span>
+                                <span class="sensor-unit">%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" data-progress="moisture-b"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- pH Monitoring -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-header-content">
+                            <span class="card-icon ph-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9.5 12a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z"/>
+                                    <path d="M17 7h4v10"/>
+                                    <path d="M17 12h3"/>
+                                    <path d="M3 6.5v11"/>
+                                    <path d="M3 12h3.5"/>
+                                </svg>
+                            </span>
+                            <h3 class="card-title">pH Level</h3>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="sensor-reading">
+                            <div class="sensor-info">
+                                <span class="led-indicator" data-led="ph-a"></span>
+                                <span class="sensor-label">Zone A</span>
+                                <span class="sensor-status" data-status="normal">Normal</span>
+                            </div>
+                            <div class="sensor-value-container" title="Optimal range: 5.5-6.5 pH">
+                                <span class="sensor-value" data-sensor="ph-a">--</span>
+                                <span class="sensor-unit">pH</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" data-progress="ph-a"></div>
+                            </div>
+                        </div>
+                        <div class="sensor-reading">
+                            <div class="sensor-info">
+                                <span class="led-indicator" data-led="ph-b"></span>
+                                <span class="sensor-label">Zone B</span>
+                                <span class="sensor-status" data-status="normal">Normal</span>
+                            </div>
+                            <div class="sensor-value-container" title="Optimal range: 5.5-6.5 pH">
+                                <span class="sensor-value" data-sensor="ph-b">--</span>
+                                <span class="sensor-unit">pH</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" data-progress="ph-b"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Temperature Monitoring -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-header-content">
+                            <span class="card-icon temp-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+                                </svg>
+                            </span>
+                            <h3 class="card-title">Temperature</h3>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="sensor-reading">
+                            <div class="sensor-info">
+                                <span class="led-indicator" data-led="temp-a"></span>
+                                <span class="sensor-label">Zone A</span>
+                                <span class="sensor-status" data-status="normal">Normal</span>
+                            </div>
+                            <div class="sensor-value-container" title="Optimal range: 20-28°C">
+                                <span class="sensor-value" data-sensor="temp-a">--</span>
+                                <span class="sensor-unit">°C</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" data-progress="temp-a"></div>
+                            </div>
+                        </div>
+                        <div class="sensor-reading">
+                            <div class="sensor-info">
+                                <span class="led-indicator" data-led="temp-b"></span>
+                                <span class="sensor-label">Zone B</span>
+                                <span class="sensor-status" data-status="normal">Normal</span>
+                            </div>
+                            <div class="sensor-value-container" title="Optimal range: 20-28°C">
+                                <span class="sensor-value" data-sensor="temp-b">--</span>
+                                <span class="sensor-unit">°C</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" data-progress="temp-b"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EC/TDS Monitoring -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-header-content">
+                            <span class="card-icon ec-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                </svg>
+                            </span>
+                            <h3 class="card-title">EC & TDS</h3>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="sensor-reading">
+                            <div class="sensor-info">
+                                <span class="led-indicator" data-led="ec"></span>
+                                <span class="sensor-label">EC</span>
+                                <span class="sensor-status" data-status="normal">Normal</span>
+                            </div>
+                            <div class="sensor-value-container" title="Optimal range: 1200-1800 μS/cm">
+                                <span class="sensor-value" data-sensor="ec">--</span>
+                                <span class="sensor-unit">μS/cm</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" data-progress="ec"></div>
+                            </div>
+                        </div>
+                        <div class="sensor-reading">
+                            <div class="sensor-info">
+                                <span class="led-indicator" data-led="tds"></span>
+                                <span class="sensor-label">TDS</span>
+                                <span class="sensor-status" data-status="normal">Normal</span>
+                            </div>
+                            <div class="sensor-value-container" title="Optimal range: 700-1000 ppm">
+                                <span class="sensor-value" data-sensor="tds">--</span>
+                                <span class="sensor-unit">ppm</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" data-progress="tds"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flow Rate Monitoring -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-header-content">
+                            <span class="card-icon rate-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2v20"/>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                    <polyline points="19 8 22 5 19 2"/>
+                                    <polyline points="5 16 2 19 5 22"/>
+                                </svg>
+                            </span>
+                            <h3 class="card-title">Flow Rate</h3>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="sensor-reading">
+                            <div class="sensor-info">
+                                <span class="led-indicator" data-led="rate-1"></span>
+                                <span class="sensor-label">System 1</span>
+                                <span class="sensor-status" data-status="normal">Normal</span>
+                            </div>
+                            <div class="sensor-value-container" title="Optimal range: 1.5-3 L/min">
+                                <span class="sensor-value" data-sensor="rate-1">--</span>
+                                <span class="sensor-unit">L/min</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" data-progress="rate-1"></div>
+                            </div>
+                        </div>
+                        <div class="sensor-reading">
+                            <div class="sensor-info">
+                                <span class="led-indicator" data-led="rate-2"></span>
+                                <span class="sensor-label">System 2</span>
+                                <span class="sensor-status" data-status="normal">Normal</span>
+                            </div>
+                            <div class="sensor-value-container" title="Optimal range: 1.5-3 L/min">
+                                <span class="sensor-value" data-sensor="rate-2">--</span>
+                                <span class="sensor-unit">L/min</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" data-progress="rate-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historical Data Graph - Full Width -->
+                <div class="card graph-card">
+                    <div class="card-header">
+                        <div class="card-header-content">
+                            <span class="card-icon graph-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="20" x2="18" y2="10"/>
+                                    <line x1="12" y1="20" x2="12" y2="4"/>
+                                    <line x1="6" y1="20" x2="6" y2="14"/>
+                                </svg>
+                            </span>
+                            <h3 class="card-title">Historical Trends</h3>
+                        </div>
+                        <div class="graph-controls">
+                            <button class="graph-control-btn active" data-timeframe="24h" aria-label="View 24 hour historical data">24H</button>
+                            <button class="graph-control-btn" data-timeframe="7d" aria-label="View 7 day historical data">7D</button>
+                            <button class="graph-control-btn" data-timeframe="30d" aria-label="View 30 day historical data">30D</button>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <canvas id="historicalGraph" 
+                                class="graph-canvas"
+                                role="img"
+                                aria-label="Historical trends graph showing EC (Electrical Conductivity) in blue and pH levels in green over time. EC ranges from 500-2500 μS/cm, pH ranges from 4-9.">
+                        </canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Control Panel -->
+<div class="control-panel">
+    <button class="control-button secondary" id="setRangesBtn" title="Configure Sensor Ranges">
+        <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span>Set Ranges</span>
+    </button>
+    <button class="control-button primary" id="refreshBtn">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <polyline points="1 20 1 14 7 14"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    <span>Refresh Data</span>
+                </button>
+                <button class="control-button secondary" id="downloadBtn">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>Export CSV</span>
+                </button>
+                <button class="control-button secondary" id="printBtn">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 6 2 18 2 18 9"/>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                        <rect x="6" y="14" width="12" height="8"/>
+                    </svg>
+                    <span>Print Report</span>
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

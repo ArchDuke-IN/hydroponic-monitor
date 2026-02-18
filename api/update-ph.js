@@ -7,7 +7,6 @@ const { handleOptions, sendJSON, sendError } = require('./_helpers');
  *
  * Expected JSON body:
  * {
- *   "device_id": "ESP32_PH",
  *   "temp1": 25.5,
  *   "hum1": 65.0,
  *   "temp2": 24.8,
@@ -15,19 +14,29 @@ const { handleOptions, sendJSON, sendError } = require('./_helpers');
  *   "ph_val": 6.5
  * }
  */
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
   if (handleOptions(req, res)) return;
 
   if (req.method !== 'POST') {
     return sendError(res, 'Only POST method allowed', 405);
   }
 
-  const { device_id, temp1, hum1, temp2, hum2, ph_val } = req.body || {};
+  const { temp1, hum1, temp2, hum2, ph_val } = req.body || {};
 
   // Validate required fields
   if (temp1 == null || hum1 == null || temp2 == null || hum2 == null || ph_val == null) {
     return sendError(res, 'Missing required fields: temp1, hum1, temp2, hum2, ph_val');
   }
+
+  try {
+    const newData = { temp1, hum1, temp2, hum2, ph_val };
+    await savePHReading(newData); // Await async save
+    sendJSON(res, { success: true, message: 'Data saved to cloud' });
+  } catch (e) {
+    console.error('Save error:', e);
+    sendError(res, 'Internal server error', 500);
+  }
+};
 
   // Validate ranges
   const t1 = parseFloat(temp1);
@@ -45,20 +54,26 @@ module.exports = (req, res) => {
   }
 
   // Save to store
-  const entry = savePHReading({
-    device_id: device_id || 'ESP32_PH',
-    temp1: t1,
-    hum1: h1,
-    temp2: t2,
-    hum2: h2,
-    ph_val: ph,
-  });
+  try {
+    const entry = await savePHReading({
+      device_id: device_id || 'ESP32_PH',
+      temp1: t1,
+      hum1: h1,
+      temp2: t2,
+      hum2: h2,
+      ph_val: ph,
+    });
 
-  console.log(`pH data saved: pH=${ph}, T1=${t1}, H1=${h1}, T2=${t2}, H2=${h2}`);
+    console.log(`pH data saved: pH=${ph}, T1=${t1}, H1=${h1}, T2=${t2}, H2=${h2}`);
 
-  sendJSON(res, {
-    success: true,
-    message: 'Data saved successfully',
-    timestamp: entry.timestamp,
-  });
+    sendJSON(res, {
+      success: true,
+      message: 'Data saved successfully',
+      timestamp: entry.timestamp,
+    });
+  } catch (err) {
+    console.error('Failed to save pH reading:', err);
+    sendError(res, 'Database error');
+  }
 };
+

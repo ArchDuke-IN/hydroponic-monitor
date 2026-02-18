@@ -6,10 +6,10 @@ const { handleOptions, sendJSON } = require('./_helpers');
  * Returns combined latest data from both ESP32 devices
  * This is what the dashboard calls every 60 seconds
  */
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
   if (handleOptions(req, res)) return;
 
-  const store = getLatest();
+  const store = await getLatest(); // Await async read
   const ph = store.ph_monitor;
   const ec = store.ec_monitor;
 

@@ -216,7 +216,8 @@ async function updateSensorData() {
         
         // Validate we have data
         if (Object.keys(data).length === 0) {
-            throw new Error('No data received from ESP32 devices');
+            console.warn('No data received from ESP32 devices yet');
+            // Don't throw error here, allow empty dashboard to load
         }
         
         // Store in state
@@ -234,9 +235,13 @@ async function updateSensorData() {
         // Hide loading state
         hideLoadingState();
         
-    } catch (error) {
-        console.error('Failed to update sensor data:', error);
-        handleDataFetchError(error);
+    } finally {
+        // Always hide loading state after first attempt
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.opacity = '0';
+            setTimeout(() => loadingOverlay.style.display = 'none', 500);
+        }
     }
 }
 

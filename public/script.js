@@ -101,26 +101,51 @@ async function fetchSensorData() {
  * @returns {Object} Transformed sensor data
  */
 function transformApiData(apiData) {
+    // Check if we received the 'data' structure
+    if (!apiData || !apiData.data) {
+        console.warn('API data format incorrect:', apiData);
+        return {};
+    }
+
+    const rawData = apiData.data;
     const data = {};
     
     // Extract plant monitoring data (ESP32 #1)
-    if (apiData.plant_monitoring && apiData.plant_monitoring.length > 0) {
-        const plantData = apiData.plant_monitoring[0];
+    if (rawData.plant_monitoring && rawData.plant_monitoring.length > 0) {
+        const plantData = rawData.plant_monitoring[0];
+        // Map API fields to dashboard fields
+        // API: temperature (temp1), humidity (hum1), soil_moisture (converted from ?)
+        // Dashboard expects: temperature, humidity, soil_moisture, light_intensity
+        
+        // Use temp1/hum1 as primary environment data
         data.temperature = parseFloat(plantData.temperature) || 0;
         data.humidity = parseFloat(plantData.humidity) || 0;
-        data.soil_moisture = parseFloat(plantData.soil_moisture) || 0;
-        data.light_intensity = parseFloat(plantData.light_intensity) || 0;
+        
+        // We don't have direct soil moisture or light sensors in current ESP schema
+        // Could use temp2/hum2 for soil/root zone data if desired
+        // For now, mapping temp2 to Soil Temp (if dashboard supports) or just logging it
+        
+        // If we want to map hum2 to soil moisture (as a proxy or placeholder)
+        // data.soil_moisture = parseFloat(plantData.hum2) || 0; 
+        
         data.plant_timestamp = plantData.timestamp;
     }
     
     // Extract water quality data (ESP32 #2)
-    if (apiData.water_quality && apiData.water_quality.length > 0) {
-        const waterData = apiData.water_quality[0];
+    if (rawData.water_quality && rawData.water_quality.length > 0) {
+        const waterData = rawData.water_quality[0];
+        
+        // Map API fields to dashboard fields
         data.ph = parseFloat(waterData.ph_value) || 0;
         data.tds = parseFloat(waterData.tds_value) || 0;
+        // API sends EC in mS/cm already converted? Let's check get-data.js
+        // get-data.js sends ec_value (mS/cm)
         data.ec = parseFloat(waterData.ec_value) || 0;
+        
         data.water_temp = parseFloat(waterData.water_temp) || 0;
-        data.water_level = parseFloat(waterData.water_level) || 0;
+        
+        // voltage is available in waterData.voltage if needed
+        
         data.water_timestamp = waterData.timestamp;
     }
     

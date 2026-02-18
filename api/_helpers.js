@@ -9,8 +9,10 @@ function setCors(res) {
 }
 
 function handleOptions(req, res) {
+  // Always set CORS headers for every request
+  setCors(res);
+  
   if (req.method === 'OPTIONS') {
-    setCors(res);
     res.status(200).end();
     return true;
   }
@@ -18,7 +20,7 @@ function handleOptions(req, res) {
 }
 
 function sendJSON(res, data, status = 200) {
-  setCors(res);
+  // setCors(res); // Already handled in handleOptions or main handler
   res.status(status).json(data);
 }
 

@@ -7,9 +7,13 @@ const { handleOptions, sendJSON } = require('./_helpers');
  * This is what the dashboard calls every 60 seconds
  */
 module.exports = async (req, res) => {
+  // Ensure CORS is set
   if (handleOptions(req, res)) return;
 
-  const store = getLatest(); // it's synchronous now in _db.js, but let's keep async just in case
+  const store = getLatest(); 
+  // Debug: Log what we are fetching
+  console.log('Fetching latest data:', store);
+  
   const ph = store.ph_monitor;
   const ec = store.ec_monitor;
 

@@ -15,11 +15,15 @@ const { handleOptions, sendJSON, sendError } = require('./_helpers');
  * }
  */
 module.exports = async (req, res) => {
+  // Ensure CORS is set for all requests
   if (handleOptions(req, res)) return;
 
   if (req.method !== 'POST') {
     return sendError(res, 'Only POST method allowed', 405);
   }
+
+  // Debug: Log the received body
+  console.log('Received pH update:', req.body);
 
   const { temp1, hum1, temp2, hum2, ph_val } = req.body || {};
 

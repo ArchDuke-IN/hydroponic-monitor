@@ -347,6 +347,8 @@ function updateSensorDisplay(sensorKey, value, config) {
  * @param {Object} data - Sensor data object
  */
 function updateAllSensors(data) {
+    if (!data) return; // Guard clause
+
     // Update Plant Monitoring (ESP32 #1)
     if (data.temperature !== undefined) {
         updateSensorDisplay('temp-a', data.temperature, CONFIG.sensors.temperature);
@@ -664,15 +666,20 @@ function hideLoadingOverlay() {
     }
 }
 
-// Event Listeners
+    // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     try {
+        // Hide loading overlay immediately to prevent getting stuck
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.classList.add('hide');
+            document.body.style.overflow = '';
+        }
+
         // Initial data load
-        updateAllSensors();
+        updateSensorData(); // Changed from updateAllSensors() to correct function name which fetches data first
         drawHistoricalGraph();
         
-        // Hide loading overlay
-        hideLoadingOverlay();
         
         // Set up auto-refresh
         setInterval(updateAllSensors, CONFIG.updateInterval);

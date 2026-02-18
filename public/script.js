@@ -101,13 +101,14 @@ async function fetchSensorData() {
  * @returns {Object} Transformed sensor data
  */
 function transformApiData(apiData) {
-    // Check if we received the 'data' structure
-    if (!apiData || !apiData.data) {
-        console.warn('API data format incorrect:', apiData);
+    // Check if we received the expected structure
+    if (!apiData) {
+        console.warn('API data is null or undefined');
         return {};
     }
 
-    const rawData = apiData.data;
+    // apiData is already the .data property from the API response (handled in fetchSensorData)
+    const rawData = apiData;
     const data = {};
     
     // Extract plant monitoring data (ESP32 #1)

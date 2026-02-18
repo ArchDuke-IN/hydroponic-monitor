@@ -1,5 +1,5 @@
-const { saveECReading } = require('./_db');
 const { handleOptions, sendJSON, sendError } = require('./_helpers');
+const { getDb } = require('../lib/mongo');
 
 /**
  * POST /api/update-ec
@@ -44,8 +44,17 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const newData = { ec_value: ec, voltage: volt, temperature: temp };
-    saveECReading(newData); 
+    const db = await getDb();
+    const collection = db.collection('ec_readings');
+    const doc = {
+      ec_value: ec,
+      voltage: volt,
+      temperature: temp,
+      createdAt: new Date(),
+    };
+
+    await collection.insertOne(doc);
+
     return sendJSON(res, { success: true, message: 'Data saved to cloud' });
   } catch (e) {
     console.error('Save error:', e);

@@ -8,6 +8,7 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
+     "mongodb": "^6.7.0",
     "node-fetch": "^2.7.0"
   }
 }

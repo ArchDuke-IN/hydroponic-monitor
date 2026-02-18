@@ -1,5 +1,5 @@
-const { savePHReading } = require('./_db');
 const { handleOptions, sendJSON, sendError } = require('./_helpers');
+const { getDb } = require('../lib/mongo');
 
 /**
  * POST /api/update-ph
@@ -44,8 +44,19 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const newData = { temp1: t1, hum1: h1, temp2: t2, hum2: h2, ph_val: ph };
-    savePHReading(newData); // Save directly
+    const db = await getDb();
+    const collection = db.collection('ph_readings');
+    const doc = {
+      temp1: t1,
+      hum1: h1,
+      temp2: t2,
+      hum2: h2,
+      ph_val: ph,
+      createdAt: new Date(),
+    };
+
+    await collection.insertOne(doc);
+
     return sendJSON(res, { success: true, message: 'Data saved to cloud' });
   } catch (e) {
     console.error('Save error:', e);

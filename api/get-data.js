@@ -1,5 +1,5 @@
-const { getLatest } = require('./_db');
 const { handleOptions, sendJSON } = require('./_helpers');
+const { getDb } = require('../lib/mongo');
 
 /**
  * GET /api/get-data
@@ -10,12 +10,16 @@ module.exports = async (req, res) => {
   // Ensure CORS is set
   if (handleOptions(req, res)) return;
 
-  const store = getLatest(); 
-  // Debug: Log what we are fetching
-  console.log('Fetching latest data:', store);
-  
-  const ph = store.ph_monitor;
-  const ec = store.ec_monitor;
+  try {
+    const db = await getDb();
+
+    const phCollection = db.collection('ph_readings');
+    const ecCollection = db.collection('ec_readings');
+
+    const [ph, ec] = await Promise.all([
+      phCollection.findOne({}, { sort: { createdAt: -1 } }),
+      ecCollection.findOne({}, { sort: { createdAt: -1 } }),
+    ]);
 
   // Calculate TDS from EC (TDS ≈ EC × 0.64) - EC is coming in µS/cm
   // but if we want TDS in ppm, we usually use EC in µS/cm * 0.5 or 0.7 depending on scale. 
@@ -27,10 +31,10 @@ module.exports = async (req, res) => {
   let ecMsCm = 0;
   let ecRaw = 0;
 
-  if (ec && ec.ec_value) {
-      ecRaw = parseFloat(ec.ec_value);
-      ecMsCm = parseFloat((ecRaw / 1000).toFixed(2));
-      tdsValue = Math.round(ecRaw * 0.5); 
+  if (ec && ec.ec_value != null) {
+    ecRaw = parseFloat(ec.ec_value);
+    ecMsCm = parseFloat((ecRaw / 1000).toFixed(2));
+    tdsValue = Math.round(ecRaw * 0.5);
   }
 
   const response = {
@@ -57,7 +61,7 @@ module.exports = async (req, res) => {
               water_temp: ph ? parseFloat(ph.temp2) : (ec ? parseFloat(ec.temperature) : 0),
               water_level: 75, // Dummy
               voltage: ec ? ec.voltage : 0,
-              timestamp: ec ? ec.timestamp : (ph ? ph.timestamp : new Date().toISOString()),
+              timestamp: ec ? ec.createdAt : (ph ? ph.createdAt : new Date()),
             },
           ]
     },
@@ -69,5 +73,9 @@ module.exports = async (req, res) => {
     },
   };
 
-  sendJSON(res, response);
+    return sendJSON(res, response);
+  } catch (err) {
+    console.error('Error in get-data:', err);
+    return sendJSON(res, { success: false, error: 'Failed to fetch data' }, 500);
+  }
 };

@@ -239,8 +239,9 @@ async function updateSensorData() {
         // Always hide loading state after first attempt
         const loadingOverlay = document.getElementById('loadingOverlay');
         if (loadingOverlay) {
-            loadingOverlay.style.opacity = '0';
-            setTimeout(() => loadingOverlay.style.display = 'none', 500);
+            loadingOverlay.classList.add('hide');
+            // Allow interactions
+            document.body.style.overflow = ''; 
         }
     }
 }
@@ -658,7 +659,7 @@ function hideLoadingOverlay() {
         setTimeout(() => {
             overlay.classList.add('hide');
             // Allow interactions
-            document.body.style.overflow = 'hidden'; // Ensure main layout stays non-scrollable
+            document.body.style.overflow = '';
         }, 1500);
     }
 }

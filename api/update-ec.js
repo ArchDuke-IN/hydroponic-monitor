@@ -26,48 +26,26 @@ module.exports = async (req, res) => {
     return sendError(res, 'Missing required fields: ec_value, voltage, temperature');
   }
 
-  try {
-    const newData = { ec_value, voltage, temperature };
-    await saveECReading(newData); // Await async save
-    sendJSON(res, { success: true, message: 'Data saved to cloud' });
-  } catch (e) {
-    console.error('Save error:', e);
-    sendError(res, 'Internal server error', 500);
-  }
-};
-
   // Parse and validate
   const ec = parseFloat(ec_value);
   const volt = parseFloat(voltage);
   const temp = parseFloat(temperature);
 
   if (isNaN(ec) || isNaN(volt) || isNaN(temp)) {
-    return sendError(res, 'All values must be valid numbers');
+    return sendError(res, 'All values must be valid numbers', 400);
   }
 
   if (ec < 0 || ec > 100000) {
-    return sendError(res, 'ec_value out of range (0-100000 µS/cm)');
+    return sendError(res, 'ec_value out of range (0-100000 µS/cm)', 400);
   }
 
-  // Save to store
   try {
-    const entry = await saveECReading({
-      device_id: device_id || 'ESP32_EC',
-      ec_value: ec,
-      voltage: volt,
-      temperature: temp,
-    });
-
-    console.log(`EC data saved: EC=${ec} µS/cm, V=${volt}V, T=${temp}°C`);
-
-    sendJSON(res, {
-      success: true,
-      message: 'Data saved successfully',
-      timestamp: entry.timestamp,
-    });
-  } catch (err) {
-    console.error('Failed to save EC reading:', err);
-    sendError(res, 'Database error');
+    const newData = { ec_value: ec, voltage: volt, temperature: temp };
+    saveECReading(newData); 
+    return sendJSON(res, { success: true, message: 'Data saved to cloud' });
+  } catch (e) {
+    console.error('Save error:', e);
+    return sendError(res, 'Internal server error', 500);
   }
 };
 

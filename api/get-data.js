@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
               humidity: ph.hum1,
               soil_moisture: ph.hum2, // Using hum2 as proxy for now
               light_intensity: 500, // Dummy
-              timestamp: ph.timestamp,
+              timestamp: ph.createdAt,
             },
           ]
         : [],
@@ -68,8 +68,8 @@ module.exports = async (req, res) => {
     device_status: {
       ph_monitor: ph ? 'connected' : 'disconnected',
       ec_monitor: ec ? 'connected' : 'disconnected',
-      ph_last_update: ph ? ph.timestamp : null,
-      ec_last_update: ec ? ec.timestamp : null,
+      ph_last_update: ph ? ph.createdAt : null,
+      ec_last_update: ec ? ec.createdAt : null,
     },
   };
 

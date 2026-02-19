@@ -44,7 +44,10 @@ module.exports = async (req, res) => {
   }
 
   try {
+    console.log('Starting pH data save process...');
     const db = await getDb();
+    console.log('Database connection obtained');
+    
     const collection = db.collection('ph_readings');
     const doc = {
       temp1: t1,
@@ -55,13 +58,15 @@ module.exports = async (req, res) => {
       createdAt: new Date(),
     };
 
+    console.log('Inserting document:', doc);
     await collection.insertOne(doc);
     console.log('pH data saved successfully:', doc);
 
     return sendJSON(res, { success: true, message: 'Data saved to cloud' });
   } catch (e) {
     console.error('Save error in update-ph:', e.message);
-    return sendError(res, 'Internal server error', 500);
+    console.error('Full error:', e);
+    return sendError(res, `Database error: ${e.message}`, 500);
   }
 };
 

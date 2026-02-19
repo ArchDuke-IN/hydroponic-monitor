@@ -56,10 +56,11 @@ module.exports = async (req, res) => {
     };
 
     await collection.insertOne(doc);
+    console.log('pH data saved successfully:', doc);
 
     return sendJSON(res, { success: true, message: 'Data saved to cloud' });
   } catch (e) {
-    console.error('Save error:', e);
+    console.error('Save error in update-ph:', e.message);
     return sendError(res, 'Internal server error', 500);
   }
 };

@@ -7,13 +7,12 @@
 
 // API Configuration
 const API_CONFIG = {
-    // Replace with the IP Address the ESP32 prints in the Serial Monitor!
-    baseURL: 'http://192.168.1.100', // Example: http://192.168.x.x
+    baseURL: '/api', // Vercel API backend
     endpoints: {
-        getLatestData: '/data',
-        testConnection: '/data'
+        getLatestData: '/get-data',
+        testConnection: '/health'
     },
-    updateInterval: 5000, // Fetch every 5 seconds for snappy local responses
+    updateInterval: 60000, // Fetch every 60 seconds
     retryAttempts: 3,
     retryDelay: 5000
 };

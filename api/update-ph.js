@@ -1,5 +1,5 @@
 const { handleOptions, sendJSON, sendError } = require('./_helpers');
-const { getDb } = require('../lib/mongo');
+const { sql } = require('../lib/db');
 
 /**
  * POST /api/update-ph
@@ -45,24 +45,16 @@ module.exports = async (req, res) => {
 
   try {
     console.log('Starting pH data save process...');
-    const db = await getDb();
-    console.log('Database connection obtained');
     
-    const collection = db.collection('ph_readings');
-    const doc = {
-      temp1: t1,
-      hum1: h1,
-      temp2: t2,
-      hum2: h2,
-      ph_val: ph,
-      createdAt: new Date(),
-    };
+    const result = await sql`
+      INSERT INTO ph_readings (temp1, hum1, temp2, hum2, ph_val, created_at)
+      VALUES (${t1}, ${h1}, ${t2}, ${h2}, ${ph}, NOW())
+      RETURNING *
+    `;
 
-    console.log('Inserting document:', doc);
-    await collection.insertOne(doc);
-    console.log('pH data saved successfully:', doc);
+    console.log('pH data saved successfully:', result[0]);
 
-    return sendJSON(res, { success: true, message: 'Data saved to cloud' });
+    return sendJSON(res, { success: true, message: 'Data saved to Neon DB' });
   } catch (e) {
     console.error('Save error in update-ph:', e.message);
     console.error('Full error:', e);

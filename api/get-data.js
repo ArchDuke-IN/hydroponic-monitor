@@ -1,5 +1,5 @@
 const { handleOptions, sendJSON } = require('./_helpers');
-const { getDb } = require('../lib/mongo');
+const { sql } = require('../lib/db');
 
 /**
  * GET /api/get-data
@@ -11,15 +11,13 @@ module.exports = async (req, res) => {
   if (handleOptions(req, res)) return;
 
   try {
-    const db = await getDb();
-
-    const phCollection = db.collection('ph_readings');
-    const ecCollection = db.collection('ec_readings');
-
-    const [ph, ec] = await Promise.all([
-      phCollection.findOne({}, { sort: { createdAt: -1 } }),
-      ecCollection.findOne({}, { sort: { createdAt: -1 } }),
+    const [phResult, ecResult] = await Promise.all([
+      sql`SELECT * FROM ph_readings ORDER BY created_at DESC LIMIT 1`,
+      sql`SELECT * FROM ec_readings ORDER BY created_at DESC LIMIT 1`
     ]);
+
+    const ph = phResult[0] || null;
+    const ec = ecResult[0] || null;
 
   // Calculate TDS from EC (TDS ≈ EC × 0.64) - EC is coming in µS/cm
   // but if we want TDS in ppm, we usually use EC in µS/cm * 0.5 or 0.7 depending on scale. 
@@ -48,7 +46,7 @@ module.exports = async (req, res) => {
               humidity: ph.hum1,
               soil_moisture: ph.hum2, // Using hum2 as proxy for now
               light_intensity: 500, // Dummy
-              timestamp: ph.createdAt,
+              timestamp: ph.created_at,
             },
           ]
         : [],
@@ -61,15 +59,15 @@ module.exports = async (req, res) => {
               water_temp: ph ? parseFloat(ph.temp2) : (ec ? parseFloat(ec.temperature) : 0),
               water_level: 75, // Dummy
               voltage: ec ? ec.voltage : 0,
-              timestamp: ec ? ec.createdAt : (ph ? ph.createdAt : new Date()),
+              timestamp: ec ? ec.created_at : (ph ? ph.created_at : new Date()),
             },
           ]
     },
     device_status: {
       ph_monitor: ph ? 'connected' : 'disconnected',
       ec_monitor: ec ? 'connected' : 'disconnected',
-      ph_last_update: ph ? ph.createdAt : null,
-      ec_last_update: ec ? ec.createdAt : null,
+      ph_last_update: ph ? ph.created_at : null,
+      ec_last_update: ec ? ec.created_at : null,
     },
   };
 

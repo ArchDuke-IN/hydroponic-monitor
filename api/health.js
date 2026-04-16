@@ -1,27 +1,27 @@
-const { getLatest } = require('./_db');
 const { handleOptions, sendJSON } = require('./_helpers');
+const { sql } = require('../lib/db');
 
 /**
  * GET /api/health
- * Health check endpoint to verify API is running
+ * Health check endpoint to verify API and DB are running
  */
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
   if (handleOptions(req, res)) return;
 
-  const store = getLatest();
-
-  sendJSON(res, {
-    success: true,
-    message: 'Hydroponic API is running',
-    uptime: process.uptime(),
-    devices: {
-      ph_monitor: store.ph_monitor ? 'has data' : 'no data yet',
-      ec_monitor: store.ec_monitor ? 'has data' : 'no data yet',
-    },
-    readings_stored: {
-      ph_history: store.ph_history.length,
-      ec_history: store.ec_history.length,
-    },
-    timestamp: new Date().toISOString(),
-  });
+  try {
+    const result = await sql`SELECT 1 as db_alive`;
+    sendJSON(res, {
+      success: true,
+      message: 'Hydroponic API is running',
+      dbStatus: result[0].db_alive === 1 ? 'connected' : 'error',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    sendJSON(res, {
+      success: false,
+      message: 'API running but DB disconnected',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    }, 500);
+  }
 };

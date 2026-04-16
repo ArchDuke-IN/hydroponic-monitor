@@ -8,7 +8,7 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
-     "mongodb": "^6.7.0",
+    "@neondatabase/serverless": "^1.0.2",
     "node-fetch": "^2.7.0"
   }
 }

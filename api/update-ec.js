@@ -1,5 +1,5 @@
 const { handleOptions, sendJSON, sendError } = require('./_helpers');
-const { getDb } = require('../lib/mongo');
+const { sql } = require('../lib/db');
 
 /**
  * POST /api/update-ec
@@ -44,18 +44,13 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const db = await getDb();
-    const collection = db.collection('ec_readings');
-    const doc = {
-      ec_value: ec,
-      voltage: volt,
-      temperature: temp,
-      createdAt: new Date(),
-    };
+    const result = await sql`
+      INSERT INTO ec_readings (ec_value, voltage, temperature, created_at)
+      VALUES (${ec}, ${volt}, ${temp}, NOW())
+      RETURNING *
+    `;
 
-    await collection.insertOne(doc);
-
-    return sendJSON(res, { success: true, message: 'Data saved to cloud' });
+    return sendJSON(res, { success: true, message: 'Data saved to Neon DB' });
   } catch (e) {
     console.error('Save error:', e);
     return sendError(res, 'Internal server error', 500);

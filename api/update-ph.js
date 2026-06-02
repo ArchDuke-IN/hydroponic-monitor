@@ -27,20 +27,15 @@ module.exports = async (req, res) => {
 
   const { temp1, hum1, temp2, hum2, ph_val } = req.body || {};
 
-  // Validate required fields
-  if (temp1 == null || hum1 == null || temp2 == null || hum2 == null || ph_val == null) {
-    return sendError(res, 'Missing required fields: temp1, hum1, temp2, hum2, ph_val');
-  }
-
-  // Validate ranges
-  const t1 = parseFloat(temp1);
-  const h1 = parseFloat(hum1);
-  const t2 = parseFloat(temp2);
-  const h2 = parseFloat(hum2);
+  // Parse and sanitize — accept partial data, convert null/NaN to 0
+  const t1 = parseFloat(temp1) || 0;
+  const h1 = parseFloat(hum1) || 0;
+  const t2 = parseFloat(temp2) || 0;
+  const h2 = parseFloat(hum2) || 0;
   const ph = parseFloat(ph_val);
 
-  if (isNaN(t1) || isNaN(h1) || isNaN(t2) || isNaN(h2) || isNaN(ph)) {
-    return sendError(res, 'All values must be valid numbers', 400);
+  if (isNaN(ph)) {
+    return sendError(res, 'ph_val must be a valid number', 400);
   }
 
   try {

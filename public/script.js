@@ -118,9 +118,9 @@ function transformApiData(apiData) {
         // API: temperature (temp1), humidity (hum1), soil_moisture (converted from ?)
         // Dashboard expects: temperature, humidity, soil_moisture, light_intensity
 
-        data.temperature = parseFloat(plantData.temperature) || 0;
-        data.humidity = parseFloat(plantData.humidity) || 0;
-        data.soil_moisture = parseFloat(plantData.soil_moisture) || 0;
+        data.temperature = plantData.temperature != null ? parseFloat(plantData.temperature) : null;
+        data.humidity = plantData.humidity != null ? parseFloat(plantData.humidity) : null;
+        data.soil_moisture = plantData.soil_moisture != null ? parseFloat(plantData.soil_moisture) : null;
 
         data.plant_timestamp = plantData.timestamp;
     }
@@ -130,13 +130,10 @@ function transformApiData(apiData) {
         const waterData = rawData.water_quality[0];
 
         // Map API fields to dashboard fields
-        data.ph = parseFloat(waterData.ph_value) || 0;
-        data.tds = parseFloat(waterData.tds_value) || 0;
-        // API sends EC in mS/cm already converted? Let's check get-data.js
-        // get-data.js sends ec_value (mS/cm)
-        data.ec = parseFloat(waterData.ec_value) || 0;
-
-        data.water_temp = parseFloat(waterData.water_temp) || 0;
+        data.ph = waterData.ph_value != null ? parseFloat(waterData.ph_value) : null;
+        data.tds = waterData.tds_value != null ? parseFloat(waterData.tds_value) : null;
+        data.ec = waterData.ec_value != null ? parseFloat(waterData.ec_value) : null;
+        data.water_temp = waterData.water_temp != null ? parseFloat(waterData.water_temp) : null;
 
         // voltage is available in waterData.voltage if needed
 
@@ -408,23 +405,19 @@ function updateSummaryCards(data) {
     if (data.water_temp != null) temps.push(data.water_temp);
     const avgTemp = temps.length > 0 ? temps.reduce((a, b) => a + b, 0) / temps.length : 0;
 
-    const moisture = data.humidity != null ? data.humidity : 0;
+    const moisture = data.humidity != null ? data.humidity : null;
 
-    const avgPH = data.ph != null ? data.ph : 0;
+    const avgPH = data.ph != null ? data.ph : null;
 
     // Update summary card values
     const avgMoistureEl = document.getElementById('avgMoisture');
     const avgTempEl = document.getElementById('avgTemp');
     const avgPHEl = document.getElementById('avgPH');
 
-    if (avgMoistureEl) avgMoistureEl.textContent = formatValue(moisture, 1);
-    if (avgTempEl) avgTempEl.textContent = formatValue(avgTemp, 1);
-    if (avgPHEl) avgPHEl.textContent = formatValue(avgPH, 2);
-
-    // Update nutrient level (use TDS as proxy)
-    const nutrientLevel = data.tds !== undefined ? data.tds : 0;
-    const nutrientEl = document.getElementById('nutrientLevel');
-    if (nutrientEl) nutrientEl.textContent = formatValue(nutrientLevel, 0);
+    if (avgMoistureEl) avgMoistureEl.textContent = moisture != null ? formatValue(moisture, 1) : '--';
+    if (avgTempEl) avgTempEl.textContent = avgTemp > 0 ? formatValue(avgTemp, 1) : '--';
+    if (avgPHEl) avgPHEl.textContent = avgPH != null ? formatValue(avgPH, 2) : '--';
+    if (nutrientEl) nutrientEl.textContent = nutrientLevel != null ? formatValue(nutrientLevel, 0) : '--';
 
     // Update summary card statuses
     updateSummaryCardStatus('moisture', moisture, CONFIG.sensors.soil_moisture);
@@ -457,11 +450,11 @@ function storeHistoricalData(data) {
     // Store data with null checks
     state.historicalData.push({
         timestamp,
-        ec: data.ec || 0,
-        ph: data.ph || 0,
-        temp: data.temperature || data.water_temp || 0,
-        moisture: data.humidity || 0,
-        tds: data.tds || 0,
+        ec: data.ec != null ? data.ec : 0,
+        ph: data.ph != null ? data.ph : 0,
+        temp: (data.temperature != null ? data.temperature : data.water_temp) || 0,
+        moisture: data.humidity != null ? data.humidity : 0,
+        tds: data.tds != null ? data.tds : 0,
         water_level: data.water_level || 0
     });
 

@@ -2,6 +2,8 @@
 #include <WebServer.h>
 #include <DHT.h>
 #include <HTTPClient.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 // ================= CONFIGURATION =================
 
@@ -14,16 +16,20 @@ const char* serverUrl = "https://hydroponic-monitor.vercel.app/api/update-ph";
 const unsigned long uploadInterval = 60000; // Upload every 60 seconds
 
 // 3. Pin Definitions
-#define SENSOR1_PIN 14 // First Temp/Hum Sensor
-#define SENSOR2_PIN 27 // Second Temp/Hum Sensor
-#define PH_PIN 34 // pH Sensor
+#define DHT11_PIN 14      // DHT11 — Ambient Temperature + Humidity
+#define DS18B20_PIN 27     // DS18B20 — Water Temperature (water-resistant)
+#define PH_PIN 34          // pH Sensor (analog)
 
 // 4. Sensor Type
 #define DHTTYPE DHT11       
 
 // ================= GLOBALS =================
-DHT dht1(SENSOR1_PIN, DHTTYPE);
-DHT dht2(SENSOR2_PIN, DHTTYPE);
+DHT dht(DHT11_PIN, DHTTYPE);
+
+// DS18B20 setup
+OneWire oneWire(DS18B20_PIN);
+DallasTemperature ds18b20(&oneWire);
+
 WebServer server(80);
 
 // pH Calibration
@@ -45,7 +51,7 @@ float readPH() {
   return phValue;
 }
 
-void sendDataToCloud(float t1, float h1, float t2, float h2, float ph) {
+void sendDataToCloud(float t1, float h1, float t2, float ph) {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
     http.begin(serverUrl);
@@ -57,7 +63,7 @@ void sendDataToCloud(float t1, float h1, float t2, float h2, float ph) {
     json += "\"temp1\":" + String(t1) + ",";
     json += "\"hum1\":" + String(h1) + ",";
     json += "\"temp2\":" + String(t2) + ",";
-    json += "\"hum2\":" + String(h2) + ",";
+    json += "\"hum2\":0,";
     json += "\"ph_val\":" + String(ph);
     json += "}";
 
@@ -84,10 +90,12 @@ void handleRoot() {
   }
 
   // --- 2. READ SENSORS ---
-  float t1 = dht1.readTemperature();
-  float h1 = dht1.readHumidity();
-  float t2 = dht2.readTemperature();
-  float h2 = dht2.readHumidity();
+  float ambientTemp = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  ds18b20.requestTemperatures();
+  float waterTemp = ds18b20.getTempCByIndex(0);
+
   float ph = readPH();
 
   // --- 3. LOGIC FOR LED & ALERTS ---
@@ -127,16 +135,16 @@ void handleRoot() {
   html += "<h1>ESP32 Monitor</h1>";
   html += "<a href='/' class='btn btn-refresh'>Refresh Data</a>";
 
-  // -- Location 1 --
-  html += "<div class='card'><h2>Location 1</h2>";
-  if (isnan(t1)) html += "<p>Sensor Error</p>";
-  else html += "<p>Temp: <span class='data'>" + String(t1, 1) + "</span> <span class='unit'>&deg;C</span></p><p>Hum: <span class='data'>" + String(h1, 0) + "</span> <span class='unit'>%</span></p>";
+  // -- Ambient Sensor (DHT11) --
+  html += "<div class='card'><h2>Ambient (DHT11)</h2>";
+  if (isnan(ambientTemp)) html += "<p>Sensor Error</p>";
+  else html += "<p>Temp: <span class='data'>" + String(ambientTemp, 1) + "</span> <span class='unit'>&deg;C</span></p><p>Hum: <span class='data'>" + String(humidity, 0) + "</span> <span class='unit'>%</span></p>";
   html += "</div>";
 
-  // -- Location 2 --
-  html += "<div class='card'><h2>Location 2</h2>";
-  if (isnan(t2)) html += "<p>Sensor Error</p>";
-  else html += "<p>Temp: <span class='data'>" + String(t2, 1) + "</span> <span class='unit'>&deg;C</span></p><p>Hum: <span class='data'>" + String(h2, 0) + "</span> <span class='unit'>%</span></p>";
+  // -- Water Temperature (DS18B20) --
+  html += "<div class='card'><h2>Water Temp (DS18B20)</h2>";
+  if (isnan(waterTemp)) html += "<p>Sensor Error</p>";
+  else html += "<p>Temp: <span class='data'>" + String(waterTemp, 1) + "</span> <span class='unit'>&deg;C</span></p>";
   html += "</div>";
 
   // -- Water Quality --
@@ -165,8 +173,8 @@ void setup() {
   Serial.begin(115200);
 
   // Start Sensors
-  dht1.begin();
-  dht2.begin();
+  dht.begin();
+  ds18b20.begin();
 
   // Start Wi-Fi
   Serial.print("Connecting to ");
@@ -192,15 +200,16 @@ void loop() {
 
   // --- AUTOMATIC CLOUD UPLOAD (Every 60s) ---
   if (millis() - lastUploadTime > uploadInterval) {
-    float t1 = dht1.readTemperature();
-    float h1 = dht1.readHumidity();
-    float t2 = dht2.readTemperature();
-    float h2 = dht2.readHumidity();
+    float ambientTemp = dht.readTemperature();
+    float humidity = dht.readHumidity();
+
+    ds18b20.requestTemperatures();
+    float waterTemp = ds18b20.getTempCByIndex(0);
+
     float ph = readPH();
 
-    if (!isnan(t1) && !isnan(t2)) {
-      sendDataToCloud(t1, h1, t2, h2, ph);
-    }
+    // Send data even if some sensors fail — each sensor is independent
+    sendDataToCloud(ambientTemp, humidity, waterTemp, ph);
     
     lastUploadTime = millis();
   }

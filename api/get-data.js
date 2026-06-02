@@ -19,12 +19,6 @@ module.exports = async (req, res) => {
     const ph = phResult[0] || null;
     const ec = ecResult[0] || null;
 
-  // Calculate TDS from EC (TDS ≈ EC × 0.64) - EC is coming in µS/cm
-  // but if we want TDS in ppm, we usually use EC in µS/cm * 0.5 or 0.7 depending on scale. 
-  // Let's assume standard 0.5 conversion for hydroponics: 1 EC (mS/cm) = 500 ppm
-  // Since we have EC in µS/cm, TDS ppm = EC_uS * 0.5
-  // Or if using your formula 0.64
-  
   let tdsValue = 0;
   let ecMsCm = 0;
   let ecRaw = 0;
@@ -42,10 +36,10 @@ module.exports = async (req, res) => {
       plant_monitoring: ph
         ? [
             {
-              temperature: ph.temp1,
-              humidity: ph.hum1,
-              soil_moisture: ph.hum2, // Using hum2 as proxy for now
-              light_intensity: 500, // Dummy
+              temperature: ph.temp1,       // DHT11 — Ambient temperature
+              humidity: ph.hum1,            // DHT11 — Humidity
+              soil_moisture: null,          // No soil moisture sensor
+              light_intensity: null,        // No light sensor
               timestamp: ph.created_at,
             },
           ]
@@ -56,8 +50,8 @@ module.exports = async (req, res) => {
               ph_value: ph ? parseFloat(ph.ph_val) : 0,
               tds_value: tdsValue,
               ec_value: ecMsCm,
-              water_temp: ph ? parseFloat(ph.temp2) : (ec ? parseFloat(ec.temperature) : 0),
-              water_level: 75, // Dummy
+              water_temp: ph ? parseFloat(ph.temp2) : (ec ? parseFloat(ec.temperature) : 0),  // DS18B20 — Water temperature
+              water_level: null,            // No water level sensor
               voltage: ec ? ec.voltage : 0,
               timestamp: ec ? ec.created_at : (ph ? ph.created_at : new Date()),
             },

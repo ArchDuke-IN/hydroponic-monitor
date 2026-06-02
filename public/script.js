@@ -335,6 +335,19 @@ function updateSensorDisplay(sensorKey, value, config) {
         const statusElement = element?.closest('.sensor-reading')?.querySelector('.sensor-status');
         const ledElement = document.querySelector(`[data-led="${sensorKey}"]`);
 
+        if (value === null || value === undefined) {
+            if (element) element.textContent = '--';
+            if (progressElement) progressElement.style.width = '0%';
+            if (statusElement) {
+                statusElement.setAttribute('data-status', 'normal');
+                statusElement.textContent = 'No Sensor';
+            }
+            if (ledElement) {
+                ledElement.classList.remove('active', 'warning', 'danger');
+            }
+            return;
+        }
+
         if (element) {
             element.textContent = formatValue(value, config.unit === 'pH' ? 2 : 1);
         }
@@ -369,40 +382,20 @@ function updateAllSensors(data) {
     if (!data) return; // Guard clause
 
     // Update Plant Monitoring (ESP32 #1)
-    if (data.temperature !== undefined) {
-        updateSensorDisplay('temp-a', data.temperature, CONFIG.sensors.temperature);
-    }
-    if (data.humidity !== undefined) {
-        updateSensorDisplay('moisture-a', data.humidity, CONFIG.sensors.humidity);
-    }
-    if (data.soil_moisture !== undefined) {
-        updateSensorDisplay('moisture-b', data.soil_moisture, CONFIG.sensors.soil_moisture);
-    }
-    if (data.light_intensity !== undefined) {
-        updateSensorDisplay('rate-1', data.light_intensity, CONFIG.sensors.light_intensity);
-    }
+    updateSensorDisplay('temp-a', data.temperature, CONFIG.sensors.temperature);
+    updateSensorDisplay('moisture-a', data.humidity, CONFIG.sensors.humidity);
+    updateSensorDisplay('moisture-b', data.soil_moisture, CONFIG.sensors.soil_moisture);
+    updateSensorDisplay('rate-1', data.light_intensity, CONFIG.sensors.light_intensity);
 
     // Update Water Quality (ESP32 #2)
-    if (data.ph !== undefined) {
-        updateSensorDisplay('ph-a', data.ph, CONFIG.sensors.ph);
-    }
-    if (data.tds !== undefined) {
-        updateSensorDisplay('tds', data.tds, CONFIG.sensors.tds);
-    }
-    if (data.ec !== undefined) {
-        updateSensorDisplay('ec', data.ec, CONFIG.sensors.ec);
-    }
-    if (data.water_temp !== undefined) {
-        updateSensorDisplay('temp-b', data.water_temp, CONFIG.sensors.water_temp);
-    }
-    if (data.water_level !== undefined) {
-        updateSensorDisplay('rate-2', data.water_level, CONFIG.sensors.water_level);
-    }
+    updateSensorDisplay('ph-a', data.ph, CONFIG.sensors.ph);
+    updateSensorDisplay('tds', data.tds, CONFIG.sensors.tds);
+    updateSensorDisplay('ec', data.ec, CONFIG.sensors.ec);
+    updateSensorDisplay('temp-b', data.water_temp, CONFIG.sensors.water_temp);
+    updateSensorDisplay('rate-2', data.water_level, CONFIG.sensors.water_level);
 
     // Update pH-B with same pH value (duplicate display)
-    if (data.ph !== undefined) {
-        updateSensorDisplay('ph-b', data.ph, CONFIG.sensors.ph);
-    }
+    updateSensorDisplay('ph-b', data.ph, CONFIG.sensors.ph);
 
     // Update summary cards
     updateSummaryCards(data);
@@ -411,14 +404,13 @@ function updateAllSensors(data) {
 function updateSummaryCards(data) {
     // Calculate averages from available data
     const temps = [];
-    if (data.temperature !== undefined) temps.push(data.temperature);
-    if (data.water_temp !== undefined) temps.push(data.water_temp);
+    if (data.temperature != null) temps.push(data.temperature);
+    if (data.water_temp != null) temps.push(data.water_temp);
     const avgTemp = temps.length > 0 ? temps.reduce((a, b) => a + b, 0) / temps.length : 0;
 
-    const moisture = data.soil_moisture !== undefined ? data.soil_moisture :
-        data.humidity !== undefined ? data.humidity : 0;
+    const moisture = data.humidity != null ? data.humidity : 0;
 
-    const avgPH = data.ph !== undefined ? data.ph : 0;
+    const avgPH = data.ph != null ? data.ph : 0;
 
     // Update summary card values
     const avgMoistureEl = document.getElementById('avgMoisture');
@@ -468,7 +460,7 @@ function storeHistoricalData(data) {
         ec: data.ec || 0,
         ph: data.ph || 0,
         temp: data.temperature || data.water_temp || 0,
-        moisture: data.soil_moisture || data.humidity || 0,
+        moisture: data.humidity || 0,
         tds: data.tds || 0,
         water_level: data.water_level || 0
     });

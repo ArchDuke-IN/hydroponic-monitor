@@ -38,23 +38,18 @@ float readPH() {
   return ph_slope * voltage + ph_calibration;
 }
 
-void sendDataToCloud(float t1, float h1, float t2, float ph) {
+void sendDataToCloud(float t1, float h1, float t2, float ph, bool t1ok, bool h1ok, bool t2ok) {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
     http.setTimeout(15000);
     http.begin(serverUrl);
     http.addHeader("Content-Type", "application/json");
-    String json = "{\"device_id\":\"ESP32_PH\",\"temp1\":" + String(t1) + ",\"hum1\":" + String(h1) + ",\"temp2\":" + String(t2) + ",\"hum2\":0,\"ph_val\":" + String(ph) + "}";
-    Serial.print("POSTing: "); Serial.println(json);
+    String json = "{\"device_id\":\"ESP32_PH\",\"temp1\":" + (t1ok ? String(t1, 1) : "null") + ",\"hum1\":" + (h1ok ? String(h1, 0) : "null") + ",\"temp2\":" + (t2ok ? String(t2, 1) : "null") + ",\"hum2\":0,\"ph_val\":" + String(ph) + "}";
+    Serial.print("POST: "); Serial.println(json);
     int code = http.POST(json);
-    Serial.print("HTTP response: "); Serial.println(code);
-    if (code > 0) {
-      String payload = http.getString();
-      Serial.print("Response: "); Serial.println(payload);
-    }
+    Serial.print("HTTP: "); Serial.println(code);
+    if (code > 0) { Serial.print("Resp: "); Serial.println(http.getString()); }
     http.end();
-  } else {
-    Serial.println("WiFi not connected, skipping cloud upload");
   }
 }
 
@@ -258,15 +253,18 @@ void loop() {
     lastStatusTime = millis();
   }
   if (millis() - lastUploadTime > uploadInterval) {
-float ambientTemp = dht.readTemperature();
+    float ambientTemp = dht.readTemperature();
     float humidity = dht.readHumidity();
-    if (isnan(ambientTemp)) ambientTemp = 0;
-    if (isnan(humidity)) humidity = 0;
+    bool t1ok = !isnan(ambientTemp);
+    bool h1ok = !isnan(humidity);
+    if (!t1ok) ambientTemp = 0;
+    if (!h1ok) humidity = 0;
     ds18b20.requestTemperatures();
     float waterTemp = ds18b20.getTempCByIndex(0);
-    if (isnan(waterTemp)) waterTemp = 0;
+    bool t2ok = !isnan(waterTemp);
+    if (!t2ok) waterTemp = 0;
     float ph = readPH();
-    sendDataToCloud(ambientTemp, humidity, waterTemp, ph);
+    sendDataToCloud(ambientTemp, humidity, waterTemp, ph, t1ok, h1ok, t2ok);
     lastUploadTime = millis();
   }
   ensureWiFi();

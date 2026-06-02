@@ -33,10 +33,11 @@ module.exports = async (req, res) => {
     return sendError(res, 'ph_val must be a valid number', 400);
   }
 
-  const t1 = parseFloat(temp1) || null;
-  const h1 = parseFloat(hum1) || null;
-  const t2 = parseFloat(temp2) || null;
-  const h2 = parseFloat(hum2) || null;
+  const toNum = (v) => { const f = parseFloat(v); return isNaN(f) ? null : f; };
+  const t1 = toNum(temp1);
+  const h1 = toNum(hum1);
+  const t2 = toNum(temp2);
+  const h2 = toNum(hum2);
 
   try {
     const result = await sql`

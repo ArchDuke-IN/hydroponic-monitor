@@ -31,7 +31,6 @@ float calVoltage7 = 0;
 float calVoltage4 = 0;
 unsigned long lastUploadTime = 0;
 bool wifiConnected = false;
-String apIP = "";
 
 float readPH() {
   int adcValue = analogRead(PH_PIN);
@@ -42,13 +41,20 @@ float readPH() {
 void sendDataToCloud(float t1, float h1, float t2, float ph) {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
+    http.setTimeout(15000);
     http.begin(serverUrl);
     http.addHeader("Content-Type", "application/json");
     String json = "{\"device_id\":\"ESP32_PH\",\"temp1\":" + String(t1) + ",\"hum1\":" + String(h1) + ",\"temp2\":" + String(t2) + ",\"hum2\":0,\"ph_val\":" + String(ph) + "}";
+    Serial.print("POSTing: "); Serial.println(json);
     int code = http.POST(json);
-    if (code > 0) Serial.println("Cloud OK");
-    else { Serial.print("Cloud err: "); Serial.println(code); }
+    Serial.print("HTTP response: "); Serial.println(code);
+    if (code > 0) {
+      String payload = http.getString();
+      Serial.print("Response: "); Serial.println(payload);
+    }
     http.end();
+  } else {
+    Serial.println("WiFi not connected, skipping cloud upload");
   }
 }
 
@@ -105,8 +111,7 @@ void handleRoot() {
   html += ".btn-green{background-color:#28a745;} .btn-orange{background-color:#fd7e14;}";
   html += "</style></head><body>";
   html += "<h1>pH Monitor</h1>";
-  if (!wifiConnected) html += "<p class='offline'>OFFLINE — Connect to ESP32-PH-Monitor WiFi</p>";
-  html += "<p>AP: ESP32-PH-Monitor | IP: " + apIP + "</p>";
+  html += "<p>WiFi: " + String(wifiConnected ? "Connected" : "DISCONNECTED") + " | IP: " + (wifiConnected ? WiFi.localIP().toString() : "N/A") + "</p>";
   html += "<a href='/' class='btn'>Refresh</a>";
 
   html += "<div class='card'><h2>Ambient (DHT11)</h2>";
@@ -183,9 +188,10 @@ void handleWiFi() {
   h += "<h2>WiFi Settings</h2><form action='/savewifi' method='POST'>";
   h += "<label>SSID:</label><input name='ssid' value='" + String(ssid) + "'><br>";
   h += "<label>Password:</label><input type='password' name='pass'><br>";
-  h += "<button class='btn'>Save & Reboot</button></form>";
+  h += "<button>Save & Reboot</button></form>";
   h += "<p>Status: " + String(wifiConnected ? "Connected" : "Disconnected") + "</p>";
-  h += "<p>AP IP: " + apIP + "</p><a href='/'><button class='btn'>Back</button></a></body></html>";
+  h += "<p>IP: " + (wifiConnected ? WiFi.localIP().toString() : "N/A") + "</p>";
+  h += "<a href='/'><button>Back</button></a></body></html>";
   server.send(200, "text/html", h);
 }
 
@@ -225,17 +231,13 @@ void setup() {
   Serial.print("Cal V7: "); Serial.println(calVoltage7, 4);
   Serial.print("Cal V4: "); Serial.println(calVoltage4, 4);
 
-  WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP("ESP32-PH-Monitor", NULL);
-  apIP = WiFi.softAPIP().toString();
-  Serial.print("AP IP: "); Serial.println(apIP);
-
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  Serial.print("WiFi");
+  Serial.print("Connecting to WiFi");
   int d = 0;
-  while (WiFi.status() != WL_CONNECTED && d * 500 < 15000) { delay(500); d++; Serial.print("."); digitalWrite(PIN_LED, !digitalRead(PIN_LED)); }
-  if (WiFi.status() == WL_CONNECTED) { wifiConnected = true; digitalWrite(PIN_LED, HIGH); Serial.print("\nIP: "); Serial.println(WiFi.localIP()); }
-  else { digitalWrite(PIN_LED, LOW); Serial.println("\nOFFLINE — connect to ESP32-PH-Monitor"); }
+  while (WiFi.status() != WL_CONNECTED && d * 500 < 20000) { delay(500); d++; Serial.print("."); digitalWrite(PIN_LED, !digitalRead(PIN_LED)); }
+  if (WiFi.status() == WL_CONNECTED) { wifiConnected = true; digitalWrite(PIN_LED, HIGH); Serial.print("\nConnected. IP: "); Serial.println(WiFi.localIP()); }
+  else { digitalWrite(PIN_LED, LOW); Serial.println("\nWiFi FAILED — check credentials"); }
 
   server.on("/", handleRoot);
   server.on("/calph7", HTTP_POST, handleCalPH7);
@@ -246,8 +248,15 @@ void setup() {
   Serial.println("Server started");
 }
 
+unsigned long lastStatusTime = 0;
+
 void loop() {
   server.handleClient();
+  if (millis() - lastStatusTime > 30000) {
+    Serial.print("WiFi: "); Serial.print(WiFi.status() == WL_CONNECTED ? "OK" : "DOWN");
+    Serial.print(" | IP: "); Serial.println(WiFi.localIP());
+    lastStatusTime = millis();
+  }
   if (millis() - lastUploadTime > uploadInterval) {
 float ambientTemp = dht.readTemperature();
     float humidity = dht.readHumidity();
